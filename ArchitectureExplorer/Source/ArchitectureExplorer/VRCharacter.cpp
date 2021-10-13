@@ -18,6 +18,9 @@ AVRCharacter::AVRCharacter()
 	//Attach camera to VRRoot
 	Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
 	Camera->SetupAttachment(VRRoot);
+
+	DestinationMarker = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("DestinationMarker"));
+	DestinationMarker->SetupAttachment(VRRoot);
 }
 
 // Called when the game starts or when spawned
@@ -37,6 +40,24 @@ void AVRCharacter::Tick(float DeltaTime)
 	NewCameraOffset.Z = 0; //do not offset vertical axis
 	AddActorWorldOffset(NewCameraOffset); //Offset the whole actor by amount NewCameraOffset
 	VRRoot->AddWorldOffset(-NewCameraOffset); //Negate the actor offset for the VRRoot offset to keep this one component in the same place
+
+	UpdateDestinationMarker();
+}
+
+void AVRCharacter::UpdateDestinationMarker()
+{
+	//Declare and initialize FVector variables for arguments to LineTraceSingleByChannel below
+	FVector Start = Camera->GetComponentLocation();
+	FVector End = Start + Camera->GetForwardVector() * MaxTeleportDistance;
+
+	FHitResult HitResult;
+	//UseLinetraceSingleByChannel to return just the first collision in the trace, stored in variable HitResult
+	bool bHit = GetWorld()->LineTraceSingleByChannel(HitResult, Start, End, ECC_Visibility); 
+
+	if (bHit)
+	{
+		DestinationMarker->SetWorldLocation(HitResult.Location);
+	}
 }
 
 // Called to bind functionality to input
