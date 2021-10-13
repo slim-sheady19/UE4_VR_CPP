@@ -36,4 +36,7 @@ private:
 	UPROPERTY(VisibleAnywhere)
 	class UCameraComponent* Camera;
 
+	UPROPERTY(VisibleAnywhere)
+	class USceneComponent* VRRoot; //Add Scene component to serve as new root
+
 };

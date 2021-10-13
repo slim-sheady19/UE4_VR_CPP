@@ -11,9 +11,13 @@ AVRCharacter::AVRCharacter()
  	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 
-	Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
-	Camera->SetupAttachment(GetRootComponent());
+	//Set up Scene component as root
+	VRRoot = CreateDefaultSubobject<USceneComponent>(TEXT("VRRoot"));
+	VRRoot->SetupAttachment(GetRootComponent());
 
+	//Attach camera to VRRoot
+	Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
+	Camera->SetupAttachment(VRRoot);
 }
 
 // Called when the game starts or when spawned
@@ -28,6 +32,11 @@ void AVRCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
+	// Calculate Camera offset every frame but getting Camera Component location and subtract ActorLocation which returns location of RootComponent of Actor (in this case the capsule)
+	FVector NewCameraOffset = Camera->GetComponentLocation() - GetActorLocation();
+	NewCameraOffset.Z = 0; //do not offset vertical axis
+	AddActorWorldOffset(NewCameraOffset); //Offset the whole actor by amount NewCameraOffset
+	VRRoot->AddWorldOffset(-NewCameraOffset); //Negate the actor offset for the VRRoot offset to keep this one component in the same place
 }
 
 // Called to bind functionality to input
