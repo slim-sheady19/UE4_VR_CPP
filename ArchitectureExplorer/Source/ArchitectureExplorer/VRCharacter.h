@@ -28,6 +28,7 @@ public:
 
 private:
 
+	bool FindTeleportDestination(FVector &OutLocation);
 	void UpdateDestinationMarker();
 
 	void MoveForward(float throttle);
@@ -52,5 +53,8 @@ private:
 	//We want this configurable in BP for the designers so we add the variable to header file
 	UPROPERTY(EditAnywhere)
 	float TeleportFadeTime = 1;
+
+	UPROPERTY(EditAnywhere)
+	FVector TeleportProjectionExtent = FVector(100, 100, 100);
 
 };

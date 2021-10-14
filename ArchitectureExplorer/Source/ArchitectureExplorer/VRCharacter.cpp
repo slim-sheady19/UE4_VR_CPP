@@ -6,6 +6,7 @@
 #include "Components/InputComponent.h"
 #include "TimerManager.h"
 #include "Components/CapsuleComponent.h"
+#include "NavigationSystem.h"
 
 // Sets default values
 AVRCharacter::AVRCharacter()
@@ -50,25 +51,45 @@ void AVRCharacter::Tick(float DeltaTime)
 
 void AVRCharacter::UpdateDestinationMarker()
 {
-	//Declare and initialize FVector variables for arguments to LineTraceSingleByChannel below
-	FVector Start = Camera->GetComponentLocation();
-	FVector End = Start + Camera->GetForwardVector() * MaxTeleportDistance;
+	FVector Location;
+	bool bHasDestination = FindTeleportDestination(Location);
 
-	FHitResult HitResult;
-	//UseLinetraceSingleByChannel to return just the first collision in the trace, stored in variable HitResult
-	bool bHit = GetWorld()->LineTraceSingleByChannel(HitResult, Start, End, ECC_Visibility); 
-
-	if (bHit)
+	if (bHasDestination) //turn on destination marker if line tracing is colliding and is on the navmesh plane
 	{
 		DestinationMarker->SetVisibility(true);
 
-		DestinationMarker->SetWorldLocation(HitResult.Location);
+		DestinationMarker->SetWorldLocation(Location);
 	}
 	else
 	{
 		DestinationMarker->SetVisibility(false);
 	}
 }
+
+bool AVRCharacter::FindTeleportDestination(FVector &OutLocation)
+{
+	//Declare and initialize FVector variables for arguments to LineTraceSingleByChannel below
+	FVector Start = Camera->GetComponentLocation();
+	FVector End = Start + Camera->GetForwardVector() * MaxTeleportDistance;
+
+	FHitResult HitResult;
+	//UseLinetraceSingleByChannel to return just the first collision in the trace, stored in variable HitResult
+	bool bHit = GetWorld()->LineTraceSingleByChannel(HitResult, Start, End, ECC_Visibility);
+
+	if (!bHit) return false; //cancel rest of function if there is no hit
+
+	FNavLocation NavLocation;
+	bool bOnNavMesh = UNavigationSystemV1::GetNavigationSystem(GetWorld())->ProjectPointToNavigation(HitResult.Location, NavLocation, TeleportProjectionExtent);
+	//https://docs.unrealengine.com/4.26/en-US/API/Runtime/NavigationSystem/UNavigationSystemV1/
+	//https://docs.unrealengine.com/4.26/en-US/API/Runtime/NavigationSystem/UNavigationSystemV1/ProjectPointToNavigation/2/
+
+	if (!bOnNavMesh) return false;
+
+	OutLocation = NavLocation.Location;
+
+	return true; //return true if both bools in the function are true
+}
+
 
 // Called to bind functionality to input
 void AVRCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -97,7 +118,7 @@ void AVRCharacter::BeginTeleport()
 	APlayerController* PC = Cast<APlayerController>(GetController());
 	if (PC != nullptr) //is valid check
 	{
-		//Camera fade
+		//start Camera fade
 		//https://docs.unrealengine.com/4.27/en-US/API/Runtime/Engine/Camera/APlayerCameraManager/StartCameraFade/
 		PC->PlayerCameraManager->StartCameraFade(0, 1, TeleportFadeTime, FLinearColor::Black);
 	}
@@ -116,6 +137,7 @@ void AVRCharacter::FinishTeleport()
 	SetActorLocation(DestinationMarker->GetComponentLocation() + (0, 0, ScaledCapsuleHalfHeight)); //Adding two FVectors, second is for height
 	UE_LOG(LogTemp, Warning, TEXT("Teleported with scaled capsule height: %f"), ScaledCapsuleHalfHeight);
 
+	//finish fade
 	APlayerController* PC = Cast<APlayerController>(GetController());
 	if (PC != nullptr)
 	{
