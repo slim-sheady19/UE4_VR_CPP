@@ -32,6 +32,8 @@ private:
 
 	void MoveForward(float throttle);
 	void MoveRight(float throttle);
+	void BeginTeleport();
+	void FinishTeleport();
 
 private:
 
@@ -46,5 +48,9 @@ private:
 
 	UPROPERTY(EditAnywhere)
 	float MaxTeleportDistance = 1000; //float for the update destination marker function for teleporting
+
+	//We want this configurable in BP for the designers so we add the variable to header file
+	UPROPERTY(EditAnywhere)
+	float TeleportFadeTime = 1;
 
 };

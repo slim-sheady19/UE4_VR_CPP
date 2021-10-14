@@ -4,6 +4,8 @@
 #include "VRCharacter.h"
 #include "Camera/CameraComponent.h"
 #include "Components/InputComponent.h"
+#include "TimerManager.h"
+#include "Components/CapsuleComponent.h"
 
 // Sets default values
 AVRCharacter::AVRCharacter()
@@ -75,7 +77,8 @@ void AVRCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 
 	PlayerInputComponent->BindAxis(TEXT("Forward"), this, &AVRCharacter::MoveForward);
 	PlayerInputComponent->BindAxis(TEXT("Right"), this, &AVRCharacter::MoveRight);
-
+	PlayerInputComponent->BindAction(TEXT("Teleport"), IE_Released, this, &AVRCharacter::BeginTeleport);
+	//https://docs.unrealengine.com/4.27/en-US/API/Runtime/Engine/Components/UInputComponent/BindAction/
 }
 
 void AVRCharacter::MoveForward(float throttle)
@@ -86,4 +89,36 @@ void AVRCharacter::MoveForward(float throttle)
 void AVRCharacter::MoveRight(float throttle)
 {
 	AddMovementInput(throttle * Camera->GetRightVector());
+}
+
+void AVRCharacter::BeginTeleport()
+{
+	//Get ref to player controller by casting to player controller and calling GetController method
+	APlayerController* PC = Cast<APlayerController>(GetController());
+	if (PC != nullptr) //is valid check
+	{
+		//Camera fade
+		//https://docs.unrealengine.com/4.27/en-US/API/Runtime/Engine/Camera/APlayerCameraManager/StartCameraFade/
+		PC->PlayerCameraManager->StartCameraFade(0, 1, TeleportFadeTime, FLinearColor::Black);
+	}
+
+	//Set a timer to call FinishTeleport
+	FTimerHandle Handle;
+	//https://docs.unrealengine.com/4.27/en-US/API/Runtime/Engine/GameFramework/AActor/GetWorldTimerManager/
+	//https://docs.unrealengine.com/4.27/en-US/API/Runtime/Engine/FTimerManager/SetTimer/5/
+	GetWorldTimerManager().SetTimer(Handle, this, &AVRCharacter::FinishTeleport, TeleportFadeTime);
+	
+}
+
+void AVRCharacter::FinishTeleport()
+{
+	float ScaledCapsuleHalfHeight = GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
+	SetActorLocation(DestinationMarker->GetComponentLocation() + (0, 0, ScaledCapsuleHalfHeight)); //Adding two FVectors, second is for height
+	UE_LOG(LogTemp, Warning, TEXT("Teleported with scaled capsule height: %f"), ScaledCapsuleHalfHeight);
+
+	APlayerController* PC = Cast<APlayerController>(GetController());
+	if (PC != nullptr)
+	{
+		PC->PlayerCameraManager->StartCameraFade(1, 0, TeleportFadeTime, FLinearColor::Black);
+	}
 }
